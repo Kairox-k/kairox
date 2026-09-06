@@ -1,0 +1,18 @@
+# Secretos
+.env
+
+# Datos personales / memoria
+kairox_memory.json
+
+# Modelos de voz binarios grandes
+vosk-model-small-es-0.42/
+*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Núcleo de Python y archivos temporales
+core.*
+*.log

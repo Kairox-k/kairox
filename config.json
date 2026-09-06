@@ -1,0 +1,9 @@
+{
+  "provider": "gemini",
+  "model": "gemini-3.5-flash",
+  "api_keys": {},
+  "voice_provider": "edge-tts",
+  "edge_voice": "es-MX-JorgeNeural",
+  "max_tokens": 2000,
+  "temperature": 0.75
+}

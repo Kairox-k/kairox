@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kairox - Asistente de Voz IA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000000 70%);
+            min-height: 100vh;
+            color: #ffffff;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            color: #ff2d2d;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+        
+        .subtitle {
+            color: #888;
+            margin-top: 10px;
+        }
+        
+        .status-panel {
+            background: rgba(22, 33, 62, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #0f3460;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #666;
+            transition: all 0.3s;
+        }
+        
+        .status-dot.listening {
+            background: #4ecca3;
+            box-shadow: 0 0 20px #4ecca3;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .status-text {
+            font-size: 1.1em;
+        }
+        
+        .chat-container {
+            background: rgba(15, 52, 96, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #0f3460;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user {
+            background: linear-gradient(135deg, #4ecca3 0%, #3d9e82 100%);
+            margin-left: auto;
+            color: #1a1a2e;
+        }
+        
+        .message.assistant {
+            background: linear-gradient(135deg, #ff2d2d 0%, #cc0022 100%);
+            margin-right: auto;
+            color: #1a1a2e;
+        }
+        
+        .message.system {
+            background: rgba(136, 136, 136, 0.3);
+            margin: 10px auto;
+            text-align: center;
+            color: #888;
+            font-size: 0.9em;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+        
+        .btn-listen {
+            background: linear-gradient(135deg, #4ecca3 0%, #3d9e82 100%);
+            color: #1a1a2e;
+        }
+        
+        .btn-listen:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(78, 204, 163, 0.4);
+        }
+        
+        .btn-listen.active {
+            background: linear-gradient(135deg, #e94560 0%, #c73e54 100%);
+            color: #ffffff;
+        }
+        
+        .btn-stop {
+            background: linear-gradient(135deg, #e94560 0%, #c73e54 100%);
+            color: #ffffff;
+        }
+        
+        .btn-stop:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(233, 69, 96, 0.4);
+        }
+        
+        .btn-clear {
+            background: linear-gradient(135deg, #533483 0%, #442a6e 100%);
+            color: #ffffff;
+            flex: 0.5;
+        }
+        
+        .btn-clear:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(83, 52, 131, 0.4);
+        }
+        
+        .quick-commands {
+            background: rgba(22, 33, 62, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #0f3460;
+        }
+        
+        .quick-commands h3 {
+            color: #ff2d2d;
+            margin-bottom: 15px;
+        }
+        
+        .commands-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+        }
+        
+        .cmd-btn {
+            padding: 12px;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            background: rgba(15, 52, 96, 0.8);
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+        
+        .cmd-btn:hover {
+            background: #533483;
+            border-color: #533483;
+            transform: translateY(-2px);
+        }
+        
+        .microphone-animation {
+            display: inline-block;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4ecca3 0%, #ff2d2d 100%);
+            position: relative;
+            margin: 20px auto;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .microphone-animation::before {
+            content: '🎤';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 40px;
+        }
+        
+        .microphone-animation.active {
+            animation: glow 1.5s infinite;
+            box-shadow: 0 0 50px rgba(78, 204, 163, 0.6);
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(78, 204, 163, 0.4); }
+            50% { box-shadow: 0 0 50px rgba(78, 204, 163, 0.8); }
+        }
+        
+        .mic-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .mic-status {
+            color: #888;
+            margin-top: 10px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ KAIROX</h1>
+            <p class="subtitle">Tu asistente personal con Gemini · Acceso a toda la web</p>
+        </header>
+        
+        <div class="status-panel">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span class="status-text" id="statusText">Listo para escuchar</span>
+            </div>
+        </div>
+        
+        <div class="mic-container">
+            <div class="microphone-animation" id="micButton" onclick="toggleListening()"></div>
+            <div class="mic-status" id="micStatus">Haz clic para empezar a escuchar</div>
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="message system">¡Hola! Soy Kairox. Presiona el micrófono o usa los comandos rápidos para interactuar conmigo.</div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-listen" id="listenBtn" onclick="toggleListening()">🎤 Escuchar</button>
+            <button class="btn btn-stop" onclick="stopListening()">⏹ Detener</button>
+            <button class="btn btn-clear" onclick="clearChat()">🗑 Limpiar</button>
+        </div>
+        
+        <div class="quick-commands">
+            <h3>⚡ Comandos Rápidos</h3>
+            <div class="commands-grid">
+                <button class="cmd-btn" onclick="executeCommand('¿Qué hora es?')">🕐 Hora</button>
+                <button class="cmd-btn" onclick="executeCommand('¿Qué fecha es?')">📅 Fecha</button>
+                <button class="cmd-btn" onclick="executeCommand('¿Qué puedes hacer?')">❓ Ayuda</button>
+                <button class="cmd-btn" onclick="executeCommand('¿Cómo está el clima?')">🌤 Clima</button>
+                <button class="cmd-btn" onclick="executeCommand('Pon música')">🎵 Música</button>
+                <button class="cmd-btn" onclick="executeCommand('Adiós')">👋 Adiós</button>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Kairox - Asistente de Voz IA · Python + Gemini + Vosk</p>
+        </footer>
+    </div>
+    
+    <script>
+        let isListening = false;
+        
+        function addMessage(sender, text, type) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function updateStatus(text, listening) {
+            document.getElementById('statusText').textContent = text;
+            const statusDot = document.getElementById('statusDot');
+            const micButton = document.getElementById('micButton');
+            const micStatus = document.getElementById('micStatus');
+            
+            if (listening) {
+                statusDot.classList.add('listening');
+                micButton.classList.add('active');
+                micStatus.textContent = 'Escuchando... Habla ahora';
+                document.getElementById('listenBtn').classList.add('active');
+                document.getElementById('listenBtn').textContent = '🎤 Escuchando...';
+            } else {
+                statusDot.classList.remove('listening');
+                micButton.classList.remove('active');
+                micStatus.textContent = 'Haz clic para empezar a escuchar';
+                document.getElementById('listenBtn').classList.remove('active');
+                document.getElementById('listenBtn').textContent = '🎤 Escuchar';
+            }
+        }
+        
+        async function toggleListening() {
+            if (isListening) {
+                stopListening();
+            } else {
+                startListening();
+            }
+        }
+        
+        function startListening() {
+            isListening = true;
+            updateStatus('Escuchando...', true);
+            addMessage('Sistema', 'Escuchando... Habla ahora', 'system');
+            listen();
+        }
+        
+        function stopListening() {
+            isListening = false;
+            updateStatus('Detenido', false);
+            addMessage('Sistema', 'Escucha detenida', 'system');
+        }
+        
+        async function listen() {
+            if (!isListening) return;
+            
+            try {
+                const response = await fetch('/listen', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success && data.user_input) {
+                    addMessage('Tú', data.user_input, 'user');
+                    addMessage('Asistente', data.response, 'assistant');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+            
+            if (isListening) {
+                setTimeout(listen, 500);
+            }
+        }
+        
+        async function executeCommand(command) {
+            addMessage('Tú', command, 'user');
+            
+            try {
+                const response = await fetch('/command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ command: command })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    addMessage('Asistente', data.response, 'assistant');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Error', 'No se pudo ejecutar el comando', 'system');
+            }
+        }
+        
+        function clearChat() {
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.innerHTML = '<div class="message system">Chat limpiado. Presiona el micrófono para empezar.</div>';
+        }
+    </script>
+</body>
+</html>
