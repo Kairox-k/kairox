@@ -17,7 +17,7 @@ from tkinter import scrolledtext, filedialog
 from voice_engine import VoiceEngine
 from gemini_brain import GeminiBrain
 from memory import MemorySystem
-from spotify_control import handle_music_command
+from spotify_control import handle_music_command, is_music_command
 from file_manager import handle_file_command
 from themes import THEMES, DEFAULT_THEME, get_theme, list_themes, next_theme
 from config import load_config
@@ -226,7 +226,7 @@ class MicButton(tk.Canvas):
 
 class VoiceAssistantGUI:
     def __init__(self):
-        self.root = tk.Tk()
+        self.root = tk.Tk(className="Kairox")
         self.root.title("Kairox - Asistente de Voz IA")
         self.root.geometry("780x640")
         self.root.configure(bg=BG_ROOT)
@@ -239,7 +239,16 @@ class VoiceAssistantGUI:
             
         # Hacer la ventana sin bordes estándar para look moderno
         self.root.overrideredirect(False)
-        
+
+        # Icono de la ventana / barra de tareas
+        try:
+            icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon_kairox.png")
+            if os.path.exists(icon_path):
+                self._window_icon = tk.PhotoImage(file=icon_path)
+                self.root.iconphoto(True, self._window_icon)
+        except Exception:
+            pass
+        self.root.after(300, self._set_x_wm_icon)
         # Variables
         self.is_listening = False
         self.recognizer = sr.Recognizer()
@@ -258,15 +267,63 @@ class VoiceAssistantGUI:
         self.memory = MemorySystem()
         self.pending_text = []
         self.attached_path = None
-        
+
         # Crear interfaz
         self.create_widgets()
-        
+
         # Cargar modelo Vosk
         self.vosk_model = None
         self.rec = None
         self.load_vosk_model()
-        
+
+    def _set_x_wm_icon(self):
+        """Fija _NET_WM_ICON en X11 (Tk 9 ignora wm iconphoto en este entorno)"""
+        try:
+            icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon_kairox.png")
+            if not os.path.exists(icon_path):
+                return
+            from PIL import Image
+            import ctypes
+            img = Image.open(icon_path).convert("RGBA")
+            w, h = img.size
+            pixels = [w, h]
+            for r, g, b, a in img.getdata():
+                pixels.append((a << 24) | (r << 16) | (g << 8) | b)
+            xlib = ctypes.CDLL("libX11.so.6")
+            xlib.XOpenDisplay.restype = ctypes.c_void_p
+            xlib.XOpenDisplay.argtypes = [ctypes.c_char_p]
+            xlib.XInternAtom.restype = ctypes.c_ulong
+            xlib.XInternAtom.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+            xlib.XChangeProperty.argtypes = [
+                ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong,
+                ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
+            xlib.XFlush.argtypes = [ctypes.c_void_p]
+            xlib.XQueryTree.argtypes = [ctypes.c_void_p, ctypes.c_ulong,
+                                        ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_ulong),
+                                        ctypes.POINTER(ctypes.POINTER(ctypes.c_ulong)), ctypes.POINTER(ctypes.c_int)]
+            disp = xlib.XOpenDisplay(None)
+            if not disp:
+                return
+            win_id = int(self.root.winfo_id())
+            root_win = ctypes.c_ulong()
+            parent_win = ctypes.c_ulong()
+            children = ctypes.POINTER(ctypes.c_ulong)()
+            n_children = ctypes.c_int()
+            xlib.XQueryTree(disp, win_id, ctypes.byref(root_win), ctypes.byref(parent_win),
+                            ctypes.byref(children), ctypes.byref(n_children))
+            atom_icon = xlib.XInternAtom(disp, b"_NET_WM_ICON", 0)
+            XA_CARDINAL = 6
+            PropModeReplace = 0
+            arr = (ctypes.c_ulong * len(pixels))(*[ctypes.c_ulong(p) for p in pixels])
+            for wid in (parent_win.value, win_id):
+                if wid:
+                    xlib.XChangeProperty(disp, wid, atom_icon, XA_CARDINAL, 32,
+                                         PropModeReplace, arr, len(arr))
+            xlib.XFlush(disp)
+
+        except Exception:
+            pass
+
     def load_vosk_model(self):
         """Carga el modelo Vosk para reconocimiento offline"""
         model_path = "vosk-model-small-es-0.42"
@@ -1004,13 +1061,13 @@ Pregúntame lo que quieras en español."""
         elif any(word in command_lower for word in ["sin gemini", "modo offline"]):
             response = "Cambié a modo local básico."
             self.brain_available = False
-        elif any(word in command_lower for word in ["música", "cancion", "canción", "volumen", "spotify", "musica", "repite", "repetición", "playlist", "lista de reproducción"]):
+        elif is_music_command(command):
             # Control de Spotify con la voz
             music_response, _action = handle_music_command(command)
             if music_response:
                 response = music_response
             else:
-                response = "Puedes decirme: pon música, pausa, siguiente canción, sube o baja el volumen."
+                response = "Puedes decirme: pon música, pausa, siguiente canción, sube o baja el volumen, o por ejemplo \"pon Bad Bunny en Spotify\" para buscar una canción."
         else:
             # Intentar recordar respuesta aprendida primero
             recalled, score = self.memory.recall_answer(command)
