@@ -5,7 +5,6 @@ import sys
 import os
 
 def test_gemini_transcribe():
-    os.environ['GEMINI_API_KEY'] = ''
     from google import genai
     from google.genai import types
     
@@ -37,7 +36,7 @@ def test_gemini_transcribe():
     
     try:
         resp = client.models.generate_content(
-            model="gemini-3.5-flash-lite",
+            model="gemini-2.5-flash-preview-05-20",
             contents=[
                 'Transcribe el audio en español:',
                 types.Part.from_bytes(data=wav_data, mime_type="audio/wav")

@@ -5,6 +5,9 @@ Soporta: Gemini (Google) + OpenAI (ChatGPT) + búsqueda web (DuckDuckGo)
 """
 
 import os
+import re
+import shutil
+import subprocess
 import sys
 import json
 import time
@@ -166,10 +169,10 @@ class GeminiBrain:
                 return "No pude generar una respuesta."
             except Exception as e:
                 last_error = str(e)
-                if "429" in last_error or "RESOURCE_EXHAUSTED" in last_error:
-                    time.sleep(attempt * 3)
+                if "429" in last_error or "RESOURCE_EXHAUSTED" in last_error or "rate_limit" in last_error:
+                    time.sleep(attempt * 5)
                 elif "503" in last_error or "UNAVAILABLE" in last_error:
-                    time.sleep(attempt * 2)
+                    time.sleep(attempt * 3)
                 else:
                     if attempt == 1:
                         continue
@@ -205,13 +208,46 @@ class GeminiBrain:
     def _friendly_error(self, error):
         if not error:
             return "Error desconocido al contactar la IA."
-        if "429" in error or "RESOURCE_EXHAUSTED" in error or "rate_limit" in error:
-            return "La IA está sobrecargada o la cuota se agotó. Espera un momento."
+        if "RESOURCE_EXHAUSTED" in error or "rate_limit" in error or "429" in error:
+            if "exceeded your current quota" in error or "RESOURCE_EXHAUSTED" in error:
+                return "La cuota diaria de Gemini se agotó. Se renueva en unas horas; prueba otra vez más tarde."
+            return "La IA está sobrecargada o la cuota se agotó. Espera un momento y prueba de nuevo."
         if "503" in error or "UNAVAILABLE" in error:
             return "La IA está con alta demanda ahora mismo."
         return f"Error al contactar con la IA: {error}"
 
-    def ask(self, prompt, use_web=True, max_tokens=None, retries=3):
+    ERR_PREFIXES = ("La cuota diaria de Gemini", "La IA está sobrecargada",
+                    "La IA está con alta demanda", "Error al contactar con la IA",
+                    "Error desconocido", "No pude generar")
+
+    def is_error_response(self, response):
+        """True si la respuesta es en realidad un mensaje de error/fallo"""
+        if not response:
+            return True
+        return response.startswith(self.ERR_PREFIXES)
+
+    def ask_opencode_from_pc(self, prompt, timeout=180):
+        """Respaldo: pregunta a opencode (CLI local) cuando Gemini falla"""
+        try:
+            exe = shutil.which("opencode")
+            if not exe:
+                return None
+            sys_prompt = (
+                "Eres Kairox, un asistente de voz español de alto nivel. "
+                "Responde SIEMPRE en español con respuestas completas y claras. "
+                "Pregunta del usuario:\n"
+            )
+            proc = subprocess.run(
+                [exe, "run", sys_prompt + prompt],
+                capture_output=True, text=True, cwd=str(Path(__file__).parent),
+                timeout=timeout)
+            out = (proc.stdout or "").strip()
+            out = re.sub(r'\x1b\[[0-9;]*m', '', out)
+            return out if out else None
+        except Exception:
+            return None
+
+    def ask(self, prompt, use_web=True, max_tokens=None, retries=5):
         if not self.connected:
             return None
         max_tokens = max_tokens or self.max_tokens

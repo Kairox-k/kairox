@@ -197,4 +197,4 @@ def create_voice_engine():
         return VoiceEngine()
     except Exception as e:
         print(f"Error creando motor de voz: {e}")
-        return VoiceEngine()
+        raise

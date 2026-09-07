@@ -45,9 +45,8 @@ class VoiceAssistant:
         with self.microphone as source:
             print("Ajustando ruido ambiental...")
             self.recognizer.adjust_for_ambient_noise(source, duration=1)
-            
-        print("Escuchando...")
-        audio = self.recognizer.listen(source, timeout=10, phrase_time_limit=10)
+            print("Escuchando...")
+            audio = self.recognizer.listen(source, timeout=10, phrase_time_limit=10)
         
         audio_data = audio.get_raw_data()
         
